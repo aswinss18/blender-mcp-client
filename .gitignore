@@ -1,0 +1,42 @@
+# --------------------
+# Python cache & build
+# --------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+
+# --------------------
+# Virtual environments
+# --------------------
+.venv/
+venv/
+ENV/
+
+# --------------------
+# uv / Python tooling
+# --------------------
+.uv/
+.python-version
+
+# Lock file (OPTIONAL – see note below)
+# uv.lock
+
+# --------------------
+# OS / Editor junk
+# --------------------
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+
+# --------------------
+# Logs
+# --------------------
+*.log
