@@ -60,6 +60,210 @@ def save_file(filepath: str):
     bpy.ops.wm.save_as_mainfile(filepath=filepath)
     return f"Scene saved to {filepath}"
 
+# ========== 2D ANIMATION TOOLS ==========
+
+@mcp.tool()
+def create_grease_pencil(name: str = "GPencil"):
+    """Create a new Grease Pencil object for 2D drawing"""
+    bpy.ops.object.gpencil_add(type='EMPTY')
+    gp_obj = bpy.context.active_object
+    gp_obj.name = name
+    return f"Grease Pencil object '{name}' created"
+
+@mcp.tool()
+def add_gp_stroke(layer_name: str = "Lines", points: list = None, frame: int = 1):
+    """Add a stroke to the active Grease Pencil object
+    
+    Args:
+        layer_name: Name of the layer to draw on
+        points: List of [x, y, z] coordinates for the stroke
+        frame: Frame number to add the stroke to
+    """
+    if points is None:
+        points = [[0, 0, 0], [1, 1, 0], [2, 0, 0]]
+    
+    gp_obj = bpy.context.active_object
+    if gp_obj.type != 'GPENCIL':
+        return "Error: Active object is not a Grease Pencil object"
+    
+    gp_data = gp_obj.data
+    
+    # Get or create layer
+    if layer_name not in gp_data.layers:
+        gp_layer = gp_data.layers.new(layer_name)
+    else:
+        gp_layer = gp_data.layers[layer_name]
+    
+    # Get or create frame
+    gp_frame = gp_layer.frames.new(frame) if frame not in [f.frame_number for f in gp_layer.frames] else gp_layer.frames[frame]
+    
+    # Create stroke
+    stroke = gp_frame.strokes.new()
+    stroke.points.add(len(points))
+    
+    for i, point in enumerate(points):
+        stroke.points[i].co = point
+        stroke.points[i].pressure = 1.0
+    
+    return f"Added stroke with {len(points)} points to layer '{layer_name}' at frame {frame}"
+
+@mcp.tool()
+def set_gp_material(name: str, color: list = None, alpha: float = 1.0):
+    """Create and assign a material to the active Grease Pencil object
+    
+    Args:
+        name: Material name
+        color: RGB color as [r, g, b] (0-1 range)
+        alpha: Transparency (0-1)
+    """
+    if color is None:
+        color = [0.0, 0.0, 0.0]  # Black by default
+    
+    gp_obj = bpy.context.active_object
+    if gp_obj.type != 'GPENCIL':
+        return "Error: Active object is not a Grease Pencil object"
+    
+    # Create material
+    mat = bpy.data.materials.new(name)
+    bpy.data.materials.create_gpencil_data(mat)
+    
+    # Set color
+    mat.grease_pencil.color = (*color, alpha)
+    
+    # Assign to object
+    gp_obj.data.materials.append(mat)
+    
+    return f"Material '{name}' created with color {color} and alpha {alpha}"
+
+@mcp.tool()
+def setup_2d_camera(location: list = None, ortho_scale: float = 10.0):
+    """Setup an orthographic camera for 2D animation
+    
+    Args:
+        location: Camera location [x, y, z]
+        ortho_scale: Orthographic scale (controls zoom)
+    """
+    if location is None:
+        location = [0, 0, 10]
+    
+    # Create camera
+    bpy.ops.object.camera_add(location=location)
+    camera = bpy.context.active_object
+    camera.rotation_euler = (0, 0, 0)
+    
+    # Set to orthographic
+    camera.data.type = 'ORTHO'
+    camera.data.ortho_scale = ortho_scale
+    
+    # Set as active camera
+    bpy.context.scene.camera = camera
+    
+    return f"2D camera created at {location} with ortho scale {ortho_scale}"
+
+@mcp.tool()
+def set_keyframe(object_name: str, property_path: str, frame: int, value: float):
+    """Set a keyframe for animation
+    
+    Args:
+        object_name: Name of the object to animate
+        property_path: Property path (e.g., 'location', 'rotation_euler', 'scale')
+        frame: Frame number
+        value: Value to set
+    """
+    obj = bpy.data.objects.get(object_name)
+    if not obj:
+        return f"Error: Object '{object_name}' not found"
+    
+    bpy.context.scene.frame_set(frame)
+    
+    # Set the value
+    if property_path == 'location':
+        obj.location = value if isinstance(value, (list, tuple)) else [value, value, value]
+    elif property_path == 'rotation_euler':
+        obj.rotation_euler = value if isinstance(value, (list, tuple)) else [value, value, value]
+    elif property_path == 'scale':
+        obj.scale = value if isinstance(value, (list, tuple)) else [value, value, value]
+    
+    # Insert keyframe
+    obj.keyframe_insert(data_path=property_path, frame=frame)
+    
+    return f"Keyframe set for '{object_name}.{property_path}' at frame {frame}"
+
+@mcp.tool()
+def set_animation_range(start_frame: int = 1, end_frame: int = 250):
+    """Set the animation frame range"""
+    bpy.context.scene.frame_start = start_frame
+    bpy.context.scene.frame_end = end_frame
+    return f"Animation range set to {start_frame}-{end_frame}"
+
+@mcp.tool()
+def set_render_settings(resolution_x: int = 1920, resolution_y: int = 1080, fps: int = 24, output_path: str = "//render_"):
+    """Configure render settings for animation
+    
+    Args:
+        resolution_x: Width in pixels
+        resolution_y: Height in pixels
+        fps: Frames per second
+        output_path: Output file path pattern
+    """
+    scene = bpy.context.scene
+    scene.render.resolution_x = resolution_x
+    scene.render.resolution_y = resolution_y
+    scene.render.fps = fps
+    scene.render.filepath = output_path
+    
+    # Set to PNG for image sequence
+    scene.render.image_settings.file_format = 'PNG'
+    
+    return f"Render settings: {resolution_x}x{resolution_y} @ {fps}fps, output: {output_path}"
+
+@mcp.tool()
+def render_animation(output_path: str):
+    """Render the animation to files
+    
+    Args:
+        output_path: Full path for output (e.g., 'C:/output/frame_')
+    """
+    bpy.context.scene.render.filepath = output_path
+    bpy.ops.render.render(animation=True)
+    return f"Animation rendered to {output_path}"
+
+@mcp.tool()
+def add_light(light_type: str = "SUN", location: list = None, energy: float = 1.0):
+    """Add a light to the scene
+    
+    Args:
+        light_type: Type of light (SUN, POINT, SPOT, AREA)
+        location: Light location [x, y, z]
+        energy: Light strength
+    """
+    if location is None:
+        location = [0, 0, 5]
+    
+    bpy.ops.object.light_add(type=light_type, location=location)
+    light = bpy.context.active_object
+    light.data.energy = energy
+    
+    return f"{light_type} light added at {location} with energy {energy}"
+
+@mcp.tool()
+def set_background_color(color: list = None):
+    """Set the world background color
+    
+    Args:
+        color: RGB color as [r, g, b] (0-1 range)
+    """
+    if color is None:
+        color = [0.05, 0.05, 0.05]  # Dark gray
+    
+    world = bpy.context.scene.world
+    if world.use_nodes:
+        bg_node = world.node_tree.nodes.get('Background')
+        if bg_node:
+            bg_node.inputs[0].default_value = (*color, 1.0)
+    
+    return f"Background color set to {color}"
+
 # IMPORTANT:
 # - No print()
 # - No logging
