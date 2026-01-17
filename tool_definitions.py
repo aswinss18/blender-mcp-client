@@ -221,7 +221,7 @@ BLENDER_TOOLS = [
         "type": "function",
         "function": {
             "name": "set_render_settings",
-            "description": "Configure render output settings for the animation",
+            "description": "Configure render output settings for the animation (supports PNG image sequence or MP4 video)",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -239,10 +239,15 @@ BLENDER_TOOLS = [
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "File path pattern for rendered frames"
+                        "description": "File path for output. For MP4: full path with .mp4 extension (e.g., 'C:/Videos/animation.mp4'). For PNG: path pattern (e.g., 'C:/Frames/frame_')"
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["PNG", "MP4"],
+                        "description": "Output format: 'MP4' for video file, 'PNG' for image sequence"
                     }
                 },
-                "required": ["resolution_x", "resolution_y", "fps", "output_path"]
+                "required": ["resolution_x", "resolution_y", "fps", "output_path", "format"]
             }
         }
     },
@@ -250,16 +255,16 @@ BLENDER_TOOLS = [
         "type": "function",
         "function": {
             "name": "render_animation",
-            "description": "Render the animation to PNG image sequence",
+            "description": "Start rendering the animation using current render settings (call set_render_settings first to configure output format and path)",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "output_path": {
                         "type": "string",
-                        "description": "Full path for output files (e.g., 'C:/output/frame_')"
+                        "description": "Optional: Override output path. If not provided, uses path from set_render_settings"
                     }
                 },
-                "required": ["output_path"]
+                "required": []
             }
         }
     },
@@ -279,5 +284,123 @@ BLENDER_TOOLS = [
                 "required": ["filepath"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_2d_circle",
+            "description": "Create a 2D circle mesh object for animation (RECOMMENDED for 2D work, works in all Blender versions)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name for the circle object (e.g., 'Ball', 'Sun', 'Wheel')"
+                    },
+                    "radius": {
+                        "type": "number",
+                        "description": "Circle radius in Blender units"
+                    },
+                    "location": {
+                        "type": "array",
+                        "description": "Position [x, y, z] where to create the circle",
+                        "items": {"type": "number"},
+                        "minItems": 3,
+                        "maxItems": 3
+                    }
+                },
+                "required": ["name", "radius", "location"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_2d_rectangle",
+            "description": "Create a 2D rectangle mesh object for animation (RECOMMENDED for 2D work, works in all Blender versions)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name for the rectangle object (e.g., 'Platform', 'Wall', 'Ground')"
+                    },
+                    "width": {
+                        "type": "number",
+                        "description": "Rectangle width in Blender units"
+                    },
+                    "height": {
+                        "type": "number",
+                        "description": "Rectangle height in Blender units"
+                    },
+                    "location": {
+                        "type": "array",
+                        "description": "Position [x, y, z] where to create the rectangle",
+                        "items": {"type": "number"},
+                        "minItems": 3,
+                        "maxItems": 3
+                    }
+                },
+                "required": ["name", "width", "height", "location"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_object_material",
+            "description": "Create and assign a colored material to any mesh object",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_name": {
+                        "type": "string",
+                        "description": "Name of the object to apply material to"
+                    },
+                    "color": {
+                        "type": "array",
+                        "description": "RGB color values in 0-1 range [r, g, b]. Examples: [1.0, 0.0, 0.0] for red, [0.0, 1.0, 0.0] for green",
+                        "items": {"type": "number", "minimum": 0, "maximum": 1},
+                        "minItems": 3,
+                        "maxItems": 3
+                    },
+                    "alpha": {
+                        "type": "number",
+                        "description": "Transparency: 0.0 = fully transparent, 1.0 = fully opaque",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                "required": ["object_name", "color", "alpha"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "animate_object_location",
+            "description": "Animate an object's position with multiple keyframes (RECOMMENDED for simple animations)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_name": {
+                        "type": "string",
+                        "description": "Name of the object to animate"
+                    },
+                    "keyframes": {
+                        "type": "array",
+                        "description": "List of keyframes, each as [frame, x, y, z]. Example: [[1, 0, 3, 0], [12, 0, -1.5, 0], [24, 0, 2, 0]]",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 4,
+                            "maxItems": 4
+                        }
+                    }
+                },
+                "required": ["object_name", "keyframes"]
+            }
+        }
     }
 ]
+
